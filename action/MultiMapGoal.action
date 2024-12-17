@@ -1,0 +1,6 @@
+geometry_msgs/PoseStamped target_pose
+string map_name
+
+---
+
+---
