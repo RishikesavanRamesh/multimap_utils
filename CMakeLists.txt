@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   genmsg
 )
+find_package(SQLite3 REQUIRED)
 
 add_action_files(
   DIRECTORY action
@@ -52,7 +53,7 @@ target_link_libraries(mm_action_client ${catkin_LIBRARIES})
 
 add_executable(multimap_navigator src/multimap_navigator.cpp)
 target_link_libraries(multimap_navigator ${catkin_LIBRARIES})
-
+target_link_libraries(multimap_navigator ${SQLite3_LIBRARIES})
 # add_executable(mm_action_server src/mm_action_server.cpp)
 # target_link_libraries(mm_action_server ${catkin_LIBRARIES})
 # add_dependencies(mm_action_server multimap_utils_generate_messages_cpp)
