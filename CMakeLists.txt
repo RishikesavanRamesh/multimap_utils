@@ -32,32 +32,25 @@ generate_messages(
 )
 
 catkin_package(
+  INCLUDE_DIRS include
   CATKIN_DEPENDS actionlib_msgs std_msgs message_runtime geometry_msgs
 )
 
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${PROJECT_SOURCE_DIR}/include
 )
 
 
-add_executable(multimap_utils src/simple_goal.cpp)
-target_link_libraries(multimap_utils ${catkin_LIBRARIES})
-
-add_executable(change_map src/change_map.cpp)
-target_link_libraries(change_map ${catkin_LIBRARIES})
-
-add_executable(mm_action_client src/mm_action_client.cpp)
-target_link_libraries(mm_action_client ${catkin_LIBRARIES})
+add_executable(steer_to_goal src/MultiMapGoalActionClient.cpp)
+target_link_libraries(steer_to_goal ${catkin_LIBRARIES})
 
 
-add_executable(multimap_navigator src/multimap_navigator.cpp)
+
+
+
+add_executable(multimap_navigator src/MultiMapGoalActionServer.cpp)
 target_link_libraries(multimap_navigator ${catkin_LIBRARIES})
 target_link_libraries(multimap_navigator ${SQLite3_LIBRARIES})
 
-add_executable(db src/db.cpp)
-target_link_libraries(db ${catkin_LIBRARIES})
-target_link_libraries(db ${SQLite3_LIBRARIES})
-# add_executable(mm_action_server src/mm_action_server.cpp)
-# target_link_libraries(mm_action_server ${catkin_LIBRARIES})
-# add_dependencies(mm_action_server multimap_utils_generate_messages_cpp)
