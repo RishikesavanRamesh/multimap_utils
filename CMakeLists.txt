@@ -1,12 +1,8 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(multimap_utils)
 
-## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
 
-## Find catkin macros and libraries
-## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
-## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   actionlib
   move_base_msgs
@@ -43,13 +39,8 @@ include_directories(
   ${PROJECT_SOURCE_DIR}/include
 )
 
-
 add_executable(steer_to_goal src/MultiMapGoalActionClient.cpp)
 target_link_libraries(steer_to_goal ${catkin_LIBRARIES})
-
-
-
-
 
 add_executable(multimap_navigator src/MultiMapGoalActionServer.cpp)
 target_link_libraries(multimap_navigator ${catkin_LIBRARIES})
