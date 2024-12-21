@@ -1,3 +1,32 @@
+/*
+Name: MultiMapGoalActionClient.cpp
+Author: Rishikesavan Ramesh <automationwith.rishikesavan@gmail.com>
+Date: 20/12/2024
+Version: 1.0
+Description:
+    This file contains the client code that interacts with the MultiMapGoalAction server to send a goal.
+    The client allows sending a navigation goal to a multi-map action server. The user provides the
+    desired target pose (x, y coordinates) and the map name as command-line arguments, and the client
+    sends the goal to the action server. The client waits for the action to complete, and upon success,
+    prints the result state.
+
+    The client works by:
+    - Parsing input from the command line (x, y coordinates and map name).
+    - Setting up an action client to communicate with the MultiMapGoalAction server.
+    - Sending a goal to the server with a target pose and map name.
+    - Waiting for the action server to process the goal and return a result.
+    - Printing the state of the action once completed or handling timeouts.
+
+Usage:
+    This file should be compiled and executed as a client for the MultiMapGoalAction server.
+    The user should provide the target pose (x, y) and the map name as arguments.
+
+    Example usage:
+    $ rosrun your_package mm_client 1.0 2.0 map_1
+
+*/
+
+
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>

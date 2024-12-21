@@ -1,3 +1,20 @@
+/*
+ * Name: MultiMapGoalActionServer.hpp
+ * Author: Rishikesavan Ramesh <automationwith.rishikesavan@gmail.com>
+ * Date: 20/12/2024
+ * Version: 1.0
+ * Description: 
+ *   This header file defines the MultiMapGoalActionServer class, which implements 
+ *   an action server that handles map switching, localization, and navigation 
+ *   between multiple maps using wormhole points. The class provides a mechanism 
+ *   to switch between different maps, localize the robot in a given map, 
+ *   navigate to wormhole points, and manage goals for navigation.
+ *
+ *   The core functionality includes receiving and processing goals, interacting 
+ *   with the `move_base` action server for navigation, and managing multiple 
+ *   maps with localization functionality.
+ */
+
 #ifndef MULTIMAP_GOAL_ACTION_SERVER_HPP
 #define MULTIMAP_GOAL_ACTION_SERVER_HPP
 
@@ -85,10 +102,10 @@ private:
     void sendGoalToMoveBase(const geometry_msgs::PoseStamped &goal);
 
 private:
-    ros::NodeHandle nh_;
-    actionlib::SimpleActionServer<multimap_utils::MultiMapGoalAction> as_;
-    std::string action_name_;
-    std::string current_map_; // Stores the current map name
+    ros::NodeHandle m_nh;
+    actionlib::SimpleActionServer<multimap_utils::MultiMapGoalAction> m_as;
+    std::string m_actionName;
+    std::string m_currentMap; // Stores the current map name
 };
 
 #endif // MULTIMAP_GOAL_ACTION_SERVER_HPP
