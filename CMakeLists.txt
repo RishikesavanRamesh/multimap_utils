@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   message_generation
   std_msgs
+  std_srvs
   genmsg
 )
 find_package(SQLite3 REQUIRED)
@@ -33,7 +34,7 @@ generate_messages(
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS actionlib_msgs std_msgs message_runtime geometry_msgs
+  CATKIN_DEPENDS actionlib_msgs std_msgs message_runtime geometry_msgs std_srvs
 )
 
 include_directories(
