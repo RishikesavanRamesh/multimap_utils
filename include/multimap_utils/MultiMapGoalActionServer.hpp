@@ -30,7 +30,6 @@
 #include <sqlite3.h>
 #include <std_srvs/Empty.h>
 #include <string>
-#include <thread>
 
 class MultiMapGoalActionServer
 {
