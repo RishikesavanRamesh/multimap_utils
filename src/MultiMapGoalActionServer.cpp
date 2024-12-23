@@ -23,9 +23,7 @@ Usage:
 */
 
 #include "multimap_utils/MultiMapGoalActionServer.hpp"
-#include <thread>  
-#include <chrono>
-#include <std_srvs/Empty.h> 
+
 
 int main(int argc, char** argv)
 {
