@@ -1,4 +1,4 @@
-image: /home/developer/my_ros_ws/src/AR100/anscer_navigation/maps/room5.pgm
+image: room5.pgm
 resolution: 0.050000
 origin: [-20.200000, -25.000000, 0.000000]
 negate: 0
