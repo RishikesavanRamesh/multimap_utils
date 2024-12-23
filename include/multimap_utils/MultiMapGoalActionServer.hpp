@@ -38,7 +38,7 @@ public:
      * @brief Constructor for the MultiMapGoalActionServer class
      * @param name Name of the action
      */
-    explicit MultiMapGoalActionServer(std::string name);
+  explicit MultiMapGoalActionServer(std::string name);
 
     /**
      * @brief Destructor for the MultiMapGoalActionServer class
@@ -107,6 +107,8 @@ private:
     ros::NodeHandle nh;
     actionlib::SimpleActionServer<multimap_utils::MultiMapGoalAction> multiMapGoalServer;
     std::string m_currentMap; // Stores the current map name
+    std::string m_dbFilePath;
+    std::string m_mapFilesBasePath;
 };
 
 #endif // MULTIMAP_GOAL_ACTION_SERVER_HPP

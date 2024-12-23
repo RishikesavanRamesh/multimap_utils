@@ -41,8 +41,21 @@ int main(int argc, char** argv)
 // Constructor
 MultiMapGoalActionServer::MultiMapGoalActionServer(std::string name)
     : multiMapGoalServer(nh, name, boost::bind(&MultiMapGoalActionServer::executeCB, this, _1), false),
-      m_currentMap("")
+      m_currentMap(""), m_dbFilePath(""), m_mapFilesBasePath("")
 {
+    // Fetch parameters from the parameter server
+    nh.param("/multimap_goal_action_server/db_file_path", m_dbFilePath, std::string("/maps/wormholes.db"));
+    nh.param("/multimap_goal_action_server/map_files_base_path", m_mapFilesBasePath, std::string("/map"));
+
+    // Ensure the base path ends with a '/'
+    if (m_mapFilesBasePath.back() != '/') {
+        m_mapFilesBasePath += "/";
+    }
+
+    // Log the fetched parameters
+    ROS_INFO("DB file path: %s", m_dbFilePath.c_str());
+    ROS_INFO("Map files base path: %s", m_mapFilesBasePath.c_str());
+
     // Start the action server
     multiMapGoalServer.start();
 }
@@ -191,11 +204,11 @@ void MultiMapGoalActionServer::navigateToWormhole(const geometry_msgs::PoseStamp
 }
 
 // Change the map being used by the robot
-void MultiMapGoalActionServer::changeMap(const std::string &target_map)
+void MultiMapGoalActionServer::changeMap(const std::string &targetMap)
 {
     ros::ServiceClient client = nh.serviceClient<nav_msgs::LoadMap>("change_map");
     nav_msgs::LoadMap srv;
-    std::string mapPath = "/home/developer/my_ros_ws/src/AR100/anscer_navigation/maps/" + target_map + ".yaml";
+    std::string mapPath = m_mapFilesBasePath.c_str() + targetMap + ".yaml";
     srv.request.map_url = mapPath;
 
     if (client.call(srv))
@@ -223,7 +236,7 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
     wormholeRequestedMap.header.stamp = ros::Time::now();
     
     // Open the SQLite database
-    int rc = sqlite3_open("/home/developer/my_ros_ws/wormhole_graph.sqlite3", &db);
+    int rc = sqlite3_open(m_dbFilePath.c_str(), &db);
     if (rc) {
         ROS_ERROR("Can't open database: %s", sqlite3_errmsg(db));
         return std::make_pair(wormholeCurrentMap, wormholeRequestedMap);  // Return empty poses if failed
