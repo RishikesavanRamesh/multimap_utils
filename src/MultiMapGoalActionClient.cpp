@@ -27,12 +27,12 @@ Usage:
 */
 
 
-#include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
-#include "multimap_utils/MultiMapGoalAction.h"
-#include <sstream>
 #include <iostream>
+#include <multimap_utils/MultiMapGoalAction.h>
+#include <ros/ros.h>
+#include <sstream>
 
 int main(int argc, char **argv)
 {
@@ -47,9 +47,9 @@ int main(int argc, char **argv)
   }
 
   // Parse the command-line arguments
-  float x_pose = std::stof(argv[1]);  // Convert the first argument to float (x position)
-  float y_pose = std::stof(argv[2]);  // Convert the second argument to float (y position)
-  std::string map_name = argv[3];     // Third argument is the map name (string)
+  float xPose = std::stof(argv[1]);  // Convert the first argument to float (x position)
+  float yPose = std::stof(argv[2]);  // Convert the second argument to float (y position)
+  std::string mapName = argv[3];     // Third argument is the map name (string)
 
   // Create the action client
   actionlib::SimpleActionClient<multimap_utils::MultiMapGoalAction> ac("multimap_goal_action");
@@ -66,8 +66,8 @@ int main(int argc, char **argv)
   goal.target_pose.header.stamp = ros::Time::now();
 
   // Set the parsed pose values
-  goal.target_pose.pose.position.x = x_pose;
-  goal.target_pose.pose.position.y = y_pose;
+  goal.target_pose.pose.position.x = xPose;
+  goal.target_pose.pose.position.y = yPose;
   goal.target_pose.pose.position.z = 0.0;
 
   goal.target_pose.pose.orientation.x = 0.0;
@@ -76,15 +76,15 @@ int main(int argc, char **argv)
   goal.target_pose.pose.orientation.w = 1.0;
 
   // Set the map name
-  goal.map_name = map_name;
+  goal.map_name = mapName;
 
   // Send the goal to the action server
   ac.sendGoal(goal);
 
   // Wait for the action to return
-  bool finished_before_timeout = ac.waitForResult(ros::Duration(30.0));
+  bool finishedBeforeTimeout = ac.waitForResult(ros::Duration(30.0));
 
-  if (finished_before_timeout)
+  if (finishedBeforeTimeout)
   {
     actionlib::SimpleClientGoalState state = ac.getState();
     ROS_INFO("Action finished: %s", state.toString().c_str());

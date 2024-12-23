@@ -23,9 +23,6 @@ Usage:
 */
 
 #include "multimap_utils/MultiMapGoalActionServer.hpp"
-#include <thread>  
-#include <chrono>
-#include <std_srvs/Empty.h> 
 
 int main(int argc, char** argv)
 {
@@ -33,7 +30,7 @@ int main(int argc, char** argv)
     ros::init(argc, argv, "multimap_goal_action_server");
 
     // Create an instance of the action server
-    MultiMapGoalActionServer action_server("multimap_goal_action");
+    MultiMapGoalActionServer actionServer("multimap_goal_action");
 
     // Keep the program running and processing requests
     ros::spin();
@@ -43,11 +40,11 @@ int main(int argc, char** argv)
 
 // Constructor
 MultiMapGoalActionServer::MultiMapGoalActionServer(std::string name)
-    : m_as(m_nh, name, boost::bind(&MultiMapGoalActionServer::executeCB, this, _1), false),
-      m_actionName(name), m_currentMap("")
+    : multiMapGoalServer(nh, name, boost::bind(&MultiMapGoalActionServer::executeCB, this, _1), false),
+      m_currentMap("")
 {
     // Start the action server
-    m_as.start();
+    multiMapGoalServer.start();
 }
 
 // Destructor
@@ -56,50 +53,48 @@ MultiMapGoalActionServer::~MultiMapGoalActionServer(void) {}
 // Callback function when a goal is received
 void MultiMapGoalActionServer::executeCB(const actionlib::SimpleActionServer<multimap_utils::MultiMapGoalAction>::GoalConstPtr &goal)
 {
-    ROS_INFO("%s: Executing, processing goal", m_actionName.c_str());
+    geometry_msgs::PoseStamped targetPose = goal->target_pose;
+    std::string requestedMap = goal->map_name;
 
-    geometry_msgs::PoseStamped target_pose = goal->target_pose;
-    std::string requested_map = goal->map_name;
-
-    std::string m_currentMap = getCurrentMap(requested_map);  // Get current map
+    std::string m_currentMap = getCurrentMap(requestedMap);  // Get current map
 
     ROS_INFO("Current map: %s", m_currentMap.c_str());
-    ROS_INFO("Requested map: %s", requested_map.c_str());
+    ROS_INFO("Requested map: %s", requestedMap.c_str());
 
-    if (m_currentMap == requested_map)
+    if (m_currentMap == requestedMap)
     {
         ROS_INFO("Current map is the same as goal map. Sending goal directly.");
-        printPose(target_pose);
-        sendGoalToMoveBase(target_pose);
+        printPose(targetPose);
+        sendGoalToMoveBase(targetPose);
     }
     else
     {
         ROS_INFO("Current map is different. Changing maps...");
 
-        auto wormhole_poses = getWormholePoints(m_currentMap, requested_map);
-        geometry_msgs::PoseStamped wormhole_pose_m_currentMap = wormhole_poses.first;
-        geometry_msgs::PoseStamped wormhole_pose_requested_map = wormhole_poses.second;
+        auto wormholePoses = getWormholePoints(m_currentMap, requestedMap);
+        geometry_msgs::PoseStamped wormholePoseCurrentMap = wormholePoses.first;
+        geometry_msgs::PoseStamped wormholePoseRequestedMap = wormholePoses.second;
 
-        navigateToWormhole(wormhole_pose_m_currentMap);
-        changeMap(requested_map);
-        setCurrentMap(requested_map);
+        navigateToWormhole(wormholePoseCurrentMap);
+        changeMap(requestedMap);
+        setCurrentMap(requestedMap);
 
         ROS_INFO("Now localizing at wormhole location on the new map...");
-        localize(wormhole_pose_requested_map);
-        sendGoalToMoveBase(target_pose);
+        localize(wormholePoseRequestedMap);
+        sendGoalToMoveBase(targetPose);
     }
 
-    m_as.setSucceeded();
+    multiMapGoalServer.setSucceeded();
 }
 
 // Localize the robot at a specific pose
-void MultiMapGoalActionServer::localize(const geometry_msgs::PoseStamped &wormhole_pose)
+void MultiMapGoalActionServer::localize(const geometry_msgs::PoseStamped &wormholePose)
 {
-    ros::Publisher localize_pub = m_nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1);
+    ros::Publisher localizingPosePublisher = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("/initialpose", 1);
     geometry_msgs::PoseWithCovarianceStamped initialPose;
-    initialPose.header = wormhole_pose.header;
-    initialPose.pose.pose.position = wormhole_pose.pose.position;
-    initialPose.pose.pose.orientation = wormhole_pose.pose.orientation;
+    initialPose.header = wormholePose.header;
+    initialPose.pose.pose.position = wormholePose.pose.position;
+    initialPose.pose.pose.orientation = wormholePose.pose.orientation;
 
     double covariance[36] = {
         0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -128,7 +123,7 @@ void MultiMapGoalActionServer::localize(const geometry_msgs::PoseStamped &wormho
 
         ros::service::call("/request_nomotion_update", srv);
         
-        localize_pub.publish(initialPose);
+        localizingPosePublisher.publish(initialPose);
 
         // Sleep to allow the loop to run at a reasonable rate
         ros::Duration(0.5).sleep();  // sleep for 0.5 seconds before the next iteration
@@ -139,20 +134,20 @@ void MultiMapGoalActionServer::localize(const geometry_msgs::PoseStamped &wormho
 }
 
 // Get the current map being used
-std::string MultiMapGoalActionServer::getCurrentMap(const std::string& requested_map)
+std::string MultiMapGoalActionServer::getCurrentMap(const std::string& requestedMap)
 {
     if (m_currentMap.empty())
     {
-        m_currentMap = requested_map;
+        m_currentMap = requestedMap;
         ROS_INFO("Setting current map to: %s", m_currentMap.c_str());
     }
     return m_currentMap;
 }
 
 // Set the current map being used
-void MultiMapGoalActionServer::setCurrentMap(const std::string& requested_map)
+void MultiMapGoalActionServer::setCurrentMap(const std::string& requestedMap)
 {
-    m_currentMap = requested_map;
+    m_currentMap = requestedMap;
 }
 
 // Print the pose
@@ -171,9 +166,9 @@ void MultiMapGoalActionServer::sendGoalToMoveBase(const geometry_msgs::PoseStamp
     ROS_INFO("Waiting for move_base action server...");
     ac.waitForServer();
 
-    move_base_msgs::MoveBaseGoal move_base_goal;
-    move_base_goal.target_pose = goal;
-    ac.sendGoal(move_base_goal);
+    move_base_msgs::MoveBaseGoal moveBaseGoal;
+    moveBaseGoal.target_pose = goal;
+    ac.sendGoal(moveBaseGoal);
     ac.waitForResult();
 
     if (ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
@@ -182,7 +177,7 @@ void MultiMapGoalActionServer::sendGoalToMoveBase(const geometry_msgs::PoseStamp
     }
     else
     {   
-        printPose(move_base_goal.target_pose);
+        printPose(moveBaseGoal.target_pose);
         ROS_INFO("Failed to move to the goal.");
     }
 }
@@ -198,10 +193,10 @@ void MultiMapGoalActionServer::navigateToWormhole(const geometry_msgs::PoseStamp
 // Change the map being used by the robot
 void MultiMapGoalActionServer::changeMap(const std::string &target_map)
 {
-    ros::ServiceClient client = m_nh.serviceClient<nav_msgs::LoadMap>("change_map");
+    ros::ServiceClient client = nh.serviceClient<nav_msgs::LoadMap>("change_map");
     nav_msgs::LoadMap srv;
-    std::string map_path = "/home/developer/my_ros_ws/src/AR100/anscer_navigation/maps/" + target_map + ".yaml";
-    srv.request.map_url = map_path;
+    std::string mapPath = "/home/developer/my_ros_ws/src/AR100/anscer_navigation/maps/" + target_map + ".yaml";
+    srv.request.map_url = mapPath;
 
     if (client.call(srv))
     {
@@ -214,28 +209,28 @@ void MultiMapGoalActionServer::changeMap(const std::string &target_map)
 }
 
 // Get wormhole points between two maps
-std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalActionServer::getWormholePoints(const std::string& m_currentMap, const std::string& goal_map)
+std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalActionServer::getWormholePoints(const std::string& m_currentMap, const std::string& goalMap)
 
 {
     sqlite3* db;
     sqlite3_stmt* stmt;
-    geometry_msgs::PoseStamped wormhole_current_map;
-    geometry_msgs::PoseStamped wormhole_requested_map;
+    geometry_msgs::PoseStamped wormholeCurrentMap;
+    geometry_msgs::PoseStamped wormholeRequestedMap;
 
-    wormhole_current_map.header.frame_id = "base_link"; 
-    wormhole_current_map.header.stamp = ros::Time::now();
-    wormhole_requested_map.header.frame_id = "base_link"; 
-    wormhole_requested_map.header.stamp = ros::Time::now();
+    wormholeCurrentMap.header.frame_id = "base_link"; 
+    wormholeCurrentMap.header.stamp = ros::Time::now();
+    wormholeRequestedMap.header.frame_id = "base_link"; 
+    wormholeRequestedMap.header.stamp = ros::Time::now();
     
     // Open the SQLite database
     int rc = sqlite3_open("/home/developer/my_ros_ws/wormhole_graph.sqlite3", &db);
     if (rc) {
         ROS_ERROR("Can't open database: %s", sqlite3_errmsg(db));
-        return std::make_pair(wormhole_current_map, wormhole_requested_map);  // Return empty poses if failed
+        return std::make_pair(wormholeCurrentMap, wormholeRequestedMap);  // Return empty poses if failed
     }
 
     // Query to find the common wormhole between both maps (First Query)
-    std::string goal_map_pose_query = 
+    std::string goalMapPoseQuery = 
         "SELECT mw1.wormhole_id, mw1.pose_x, mw1.pose_y, mw1.pose_z, "
         "mw1.orientation_x, mw1.orientation_y, mw1.orientation_z, mw1.orientation_w "
         "FROM map_wormhole_relations mw2 "
@@ -245,17 +240,17 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
         "WHERE m1.map_name = ? AND m2.map_name = ?; ";
 
     // Prepare the SQL statement for querying the common wormhole (First Query)
-    rc = sqlite3_prepare_v2(db, goal_map_pose_query.c_str(), -1, &stmt, 0);
+    rc = sqlite3_prepare_v2(db, goalMapPoseQuery.c_str(), -1, &stmt, 0);
     if (rc) {
         ROS_ERROR("Failed to prepare statement: %s", sqlite3_errmsg(db));
         sqlite3_close(db);
-        return std::make_pair(wormhole_current_map, wormhole_requested_map);
+        return std::make_pair(wormholeCurrentMap, wormholeRequestedMap);
     }
 
-    ROS_INFO("cm : %s; gm : %s", m_currentMap.c_str(), goal_map.c_str());
+    ROS_INFO("cm : %s; gm : %s", m_currentMap.c_str(), goalMap.c_str());
     // Bind the current and goal map parameters for the first query
     sqlite3_bind_text(stmt, 1, m_currentMap.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, goal_map.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, goalMap.c_str(), -1, SQLITE_STATIC);
 
     // Execute the first query and check if a common wormhole is found
     rc = sqlite3_step(stmt);
@@ -271,23 +266,23 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
         double orientation_w = sqlite3_column_double(stmt, 7);
 
         // Set the position and orientation in the requested map pose
-        wormhole_requested_map.pose.position.x = pose_x;
-        wormhole_requested_map.pose.position.y = pose_y;
-        wormhole_requested_map.pose.position.z = pose_z;
-        wormhole_requested_map.pose.orientation.x = orientation_x;
-        wormhole_requested_map.pose.orientation.y = orientation_y;
-        wormhole_requested_map.pose.orientation.z = orientation_z;
-        wormhole_requested_map.pose.orientation.w = orientation_w;
+        wormholeRequestedMap.pose.position.x = pose_x;
+        wormholeRequestedMap.pose.position.y = pose_y;
+        wormholeRequestedMap.pose.position.z = pose_z;
+        wormholeRequestedMap.pose.orientation.x = orientation_x;
+        wormholeRequestedMap.pose.orientation.y = orientation_y;
+        wormholeRequestedMap.pose.orientation.z = orientation_z;
+        wormholeRequestedMap.pose.orientation.w = orientation_w;
 
-        wormhole_requested_map.header.frame_id = "map";  // Set the frame_id for consistency
+        wormholeRequestedMap.header.frame_id = "map";  // Set the frame_id for consistency
 
 
         // Log the common wormhole information from the first query
         ROS_INFO("Common wormhole found with ID: %d", wormhole_id);
-        ROS_INFO("Position in goal_map: (%.2f, %.2f, %.2f)", pose_x, pose_y, pose_z);
-        ROS_INFO("Orientation in goal_map: (%.2f, %.2f, %.2f, %.2f)", orientation_x, orientation_y, orientation_z, orientation_w);
+        ROS_INFO("Position in goalMap: (%.2f, %.2f, %.2f)", pose_x, pose_y, pose_z);
+        ROS_INFO("Orientation in goalMap: (%.2f, %.2f, %.2f, %.2f)", orientation_x, orientation_y, orientation_z, orientation_w);
     } else if (rc == SQLITE_DONE) {
-        ROS_WARN("No common wormhole found between maps: %s and %s", m_currentMap.c_str(), goal_map.c_str());
+        ROS_WARN("No common wormhole found between maps: %s and %s", m_currentMap.c_str(), goalMap.c_str());
     } else {
         ROS_ERROR("Error executing query: %s", sqlite3_errmsg(db));
     }
@@ -296,7 +291,7 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
     sqlite3_finalize(stmt);
 
     // Prepare the SQL statement for querying the common wormhole (Second Query)
-    std::string m_currentMappose_query = 
+    std::string currentMapPoseQuery = 
         "SELECT mw2.wormhole_id, mw2.pose_x, mw2.pose_y, mw2.pose_z, "
         "mw2.orientation_x, mw2.orientation_y, mw2.orientation_z, mw2.orientation_w "
         "FROM map_wormhole_relations mw2 "
@@ -305,16 +300,16 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
         "JOIN maps m2 ON mw1.map_id = m2.map_id "
         "WHERE m1.map_name = ? AND m2.map_name = ?; ";
 
-    rc = sqlite3_prepare_v2(db, m_currentMappose_query.c_str(), -1, &stmt, 0);
+    rc = sqlite3_prepare_v2(db, currentMapPoseQuery.c_str(), -1, &stmt, 0);
     if (rc) {
         ROS_ERROR("Failed to prepare second statement: %s", sqlite3_errmsg(db));
         sqlite3_close(db);
-        return std::make_pair(wormhole_current_map, wormhole_requested_map);
+        return std::make_pair(wormholeCurrentMap, wormholeRequestedMap);
     }
 
     // Bind the current and goal map parameters for the second query
     sqlite3_bind_text(stmt, 1, m_currentMap.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, goal_map.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, goalMap.c_str(), -1, SQLITE_STATIC);
 
     // Execute the second query and check if a common wormhole is found
     rc = sqlite3_step(stmt);
@@ -330,15 +325,15 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
         double orientation_w = sqlite3_column_double(stmt, 7);
 
         // Set the position and orientation in the current map pose
-        wormhole_current_map.pose.position.x = pose_x;
-        wormhole_current_map.pose.position.y = pose_y;
-        wormhole_current_map.pose.position.z = pose_z;
-        wormhole_current_map.pose.orientation.x = orientation_x;
-        wormhole_current_map.pose.orientation.y = orientation_y;
-        wormhole_current_map.pose.orientation.z = orientation_z;
-        wormhole_current_map.pose.orientation.w = orientation_w;
+        wormholeCurrentMap.pose.position.x = pose_x;
+        wormholeCurrentMap.pose.position.y = pose_y;
+        wormholeCurrentMap.pose.position.z = pose_z;
+        wormholeCurrentMap.pose.orientation.x = orientation_x;
+        wormholeCurrentMap.pose.orientation.y = orientation_y;
+        wormholeCurrentMap.pose.orientation.z = orientation_z;
+        wormholeCurrentMap.pose.orientation.w = orientation_w;
 
-        wormhole_current_map.header.frame_id = "map";  // Set the frame_id for consistency
+        wormholeCurrentMap.header.frame_id = "map";  // Set the frame_id for consistency
 
 
         // Log the common wormhole information from the second query
@@ -346,7 +341,7 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
         ROS_INFO("Position in m_currentMap: (%.2f, %.2f, %.2f)", pose_x, pose_y, pose_z);
         ROS_INFO("Orientation in m_currentMap: (%.2f, %.2f, %.2f, %.2f)", orientation_x, orientation_y, orientation_z, orientation_w);
     } else if (rc == SQLITE_DONE) {
-        ROS_WARN("No common wormhole found between maps: %s and %s (second query)", m_currentMap.c_str(), goal_map.c_str());
+        ROS_WARN("No common wormhole found between maps: %s and %s (second query)", m_currentMap.c_str(), goalMap.c_str());
     } else {
         ROS_ERROR("Error executing second query: %s", sqlite3_errmsg(db));
     }
@@ -355,10 +350,10 @@ std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> MultiMapGoalAc
     sqlite3_finalize(stmt);
     sqlite3_close(db);
     ROS_WARN("NOW WILL PRINT REQ MAP WH POSE");
-    printPose(wormhole_requested_map);
+    printPose(wormholeRequestedMap);
     ROS_WARN("NOW WILL PRINT CUR MAP WH POSE");
-    printPose(wormhole_current_map);
+    printPose(wormholeCurrentMap);
 
-    return std::make_pair(wormhole_current_map, wormhole_requested_map);
+    return std::make_pair(wormholeCurrentMap, wormholeRequestedMap);
 }
 

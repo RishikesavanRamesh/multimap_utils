@@ -18,16 +18,19 @@
 #ifndef MULTIMAP_GOAL_ACTION_SERVER_HPP
 #define MULTIMAP_GOAL_ACTION_SERVER_HPP
 
-#include <ros/ros.h>
-#include <actionlib/server/simple_action_server.h>
-#include "multimap_utils/MultiMapGoalAction.h"
-#include <move_base_msgs/MoveBaseAction.h>
-#include <actionlib/client/simple_action_client.h>
-#include "nav_msgs/LoadMap.h"
-#include <sqlite3.h>
-#include <string>
 #include <actionlib/client/service_client.h>
+#include <actionlib/client/simple_action_client.h>
+#include <actionlib/server/simple_action_server.h>
+#include <chrono>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <multimap_utils/MultiMapGoalAction.h>
+#include <nav_msgs/LoadMap.h>
+#include <ros/ros.h>
+#include <sqlite3.h>
+#include <std_srvs/Empty.h>
+#include <string>
+#include <thread>
 
 class MultiMapGoalActionServer
 {
@@ -52,30 +55,30 @@ public:
 private:
     /**
      * @brief Function to localize the robot at a given pose
-     * @param wormhole_pose Pose to localize the robot at
+     * @param wormholePose Pose to localize the robot at
      */
-    void localize(const geometry_msgs::PoseStamped &wormhole_pose);
+    void localize(const geometry_msgs::PoseStamped &wormholePose);
 
     /**
      * @brief Function to get the current map
-     * @param requested_map Name of the requested map
+     * @param requestedMap Name of the requested map
      * @return The current map name
      */
-    std::string getCurrentMap(const std::string &requested_map);
+    std::string getCurrentMap(const std::string &requestedMap);
 
     /**
      * @brief Function to set the current map
-     * @param requested_map Name of the requested map
+     * @param requestedMap Name of the requested map
      */
-    void setCurrentMap(const std::string &requested_map);
+    void setCurrentMap(const std::string &requestedMap);
 
     /**
      * @brief Function to get the wormhole points between two maps
-     * @param current_map Name of the current map
-     * @param goal_map Name of the goal map
+     * @param currentMap Name of the current map
+     * @param goalMap Name of the goal map
      * @return Pair of geometry_msgs::PoseStamped representing wormhole positions in both maps
      */
-    std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> getWormholePoints(const std::string &current_map, const std::string &goal_map);
+    std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> getWormholePoints(const std::string &currentMap, const std::string &goalMap);
 
     /**
      * @brief Function to print the pose details
@@ -91,9 +94,9 @@ private:
 
     /**
      * @brief Function to change the map to the target map
-     * @param target_map The map to switch to
+     * @param targetMap The map to switch to
      */
-    void changeMap(const std::string &target_map);
+    void changeMap(const std::string &targetMap);
 
     /**
      * @brief Function to send the goal to move_base
@@ -102,9 +105,8 @@ private:
     void sendGoalToMoveBase(const geometry_msgs::PoseStamped &goal);
 
 private:
-    ros::NodeHandle m_nh;
-    actionlib::SimpleActionServer<multimap_utils::MultiMapGoalAction> m_as;
-    std::string m_actionName;
+    ros::NodeHandle nh;
+    actionlib::SimpleActionServer<multimap_utils::MultiMapGoalAction> multiMapGoalServer;
     std::string m_currentMap; // Stores the current map name
 };
 
